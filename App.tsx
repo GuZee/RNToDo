@@ -1,118 +1,81 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { Provider } from 'react-redux';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { store } from './src/redux/store';
+import { setTasks } from './src/redux/slices/taskSlice';
+import TaskInput from './src/components/TaskInput';
+import TaskList from './src/components/TaskList';
+import StatsTable from './src/components/StatsTable';
+import { Task } from './src/types';
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+const App: React.FC = () => {
+  // 在应用启动时从AsyncStorage加载任务
+  useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        const savedTasks = await AsyncStorage.getItem('tasks');
+        if (savedTasks) {
+          const parsedTasks: Task[] = JSON.parse(savedTasks);
+          store.dispatch(setTasks(parsedTasks));
+        }
+      } catch (error) {
+        console.error('加载任务失败:', error);
+      }
+    };
+    loadTasks();
+  }, []);
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+  // 当任务状态变化时保存到AsyncStorage
+  useEffect(() => {
+    const saveTasksToStorage = async () => {
+      try {
+        const currentTasks = store.getState().tasks.tasks;
+        await AsyncStorage.setItem('tasks', JSON.stringify(currentTasks));
+      } catch (error) {
+        console.error('保存任务失败:', error);
+      }
+    };
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+    // 订阅store变化
+    const unsubscribe = store.subscribe(() => {
+      saveTasksToStorage();
+    });
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
-
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
+    return () => unsubscribe();
+  }, []);
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+    <Provider store={store}>
+      <View style={styles.container}>
+        <View style={styles.todoTitle}>
+          <Text style={styles.titleText}>TODO</Text>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+        <TaskInput />
+        <StatsTable />
+        <TaskList />
+      </View>
+    </Provider>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: { 
+    flex: 1, 
+    padding: 20, 
+    backgroundColor: '#fff' 
   },
-  sectionTitle: {
+  todoTitle: {
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 40,
+    marginBottom: 20
+  },
+  titleText: {
     fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
+    fontWeight: 'bold',
+  }
 });
 
 export default App;
